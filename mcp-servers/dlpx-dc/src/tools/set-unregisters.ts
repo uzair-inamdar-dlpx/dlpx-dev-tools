@@ -5,8 +5,15 @@ import { type ToolContext, type ToolDef, targetSchema } from "./types.js";
 export function createSetUnregistersTool(ctx: ToolContext): ToolDef {
   const inputSchema = z.object({
     target: targetSchema,
-    days: z.number().int().positive(),
-    vm_names: z.array(z.string().min(1)).min(1),
+    days: z
+      .number()
+      .int()
+      .positive()
+      .describe("Number of days from now until the VMs are unregistered/slept."),
+    vm_names: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe("One or more VM names to update."),
   });
   return {
     name: "dlpx_set_unregisters",
