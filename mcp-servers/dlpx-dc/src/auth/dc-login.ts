@@ -27,6 +27,10 @@ export async function runWithDcLogin(
 
   const password = await creds.getPassword();
   const otp = await creds.getOtp();
+  // NOTE: `--password <value>` makes the password visible to `ps` on the
+  // remote host for the duration of `dc login`. Confirm during smoke test
+  // whether `dc login` supports stdin piping or an env-var form, and switch
+  // to that if available.
   const login = await run([
     "dc",
     "login",
