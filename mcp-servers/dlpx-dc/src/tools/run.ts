@@ -17,7 +17,6 @@ export function createRunTool(ctx: ToolContext): ToolDef {
     inputSchema,
     handler: async (raw) => {
       const { target, args } = inputSchema.parse(raw);
-      if (args.length === 0) throw new Error("args must contain at least one element");
       return runOnTarget({
         manager: ctx.manager,
         creds: ctx.creds,
