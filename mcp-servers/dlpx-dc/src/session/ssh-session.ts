@@ -23,6 +23,9 @@ export class SshSession implements SshExec {
         this.client = c;
         resolve(c);
       });
+      c.on("close", () => {
+        this.client = undefined;
+      });
       c.on("error", (err) => reject(err));
       c.connect({
         host: this.opts.host,
