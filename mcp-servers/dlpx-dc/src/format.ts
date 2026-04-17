@@ -1,8 +1,4 @@
-export interface ExecResult {
-  stdout: string;
-  stderr: string;
-  code: number;
-}
+import type { ExecResult } from "./session/exec.js";
 
 function block(label: string, body: string): string {
   const trimmed = body.replace(/\n+$/, "");
