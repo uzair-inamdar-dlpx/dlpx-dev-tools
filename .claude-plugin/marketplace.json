@@ -1,0 +1,36 @@
+{
+  "name": "dlpx-dev-tools",
+  "owner": {
+    "name": "Delphix"
+  },
+  "metadata": {
+    "description": "Delphix developer tooling for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "dlpx-dc-mcp",
+      "source": "./plugins/dlpx-dc-mcp",
+      "description": "MCP server that drives the Delphix `dc` CLI over SSH on dlpxdc.co, dcol1.delphix.com, and dcol2.delphix.com"
+    },
+    {
+      "name": "atlassian",
+      "description": "Connect to Atlassian products including Jira and Confluence. Search and create issues, access documentation, manage sprints, and integrate your development workflow with Atlassian's collaboration tools.",
+      "category": "productivity",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/atlassian/atlassian-mcp-server.git"
+      },
+      "homepage": "https://github.com/atlassian/atlassian-mcp-server"
+    },
+    {
+      "name": "superpowers",
+      "description": "Superpowers teaches Claude brainstorming, subagent driven development with built in code review, systematic debugging, and red/green TDD. Additionally, it teaches Claude how to author and test new skills.",
+      "category": "development",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/obra/superpowers.git"
+      },
+      "homepage": "https://github.com/obra/superpowers.git"
+    }
+  ]
+}

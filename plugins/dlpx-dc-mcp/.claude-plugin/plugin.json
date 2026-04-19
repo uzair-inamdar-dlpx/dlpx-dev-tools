@@ -1,0 +1,14 @@
+{
+  "name": "dlpx-dc-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that drives the Delphix `dc` CLI over SSH on dlpxdc.co, dcol1.delphix.com, and dcol2.delphix.com",
+  "author": {
+    "name": "Delphix"
+  },
+  "mcpServers": {
+    "dlpx-dc": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp-servers/dlpx-dc/dist/index.js"]
+    }
+  }
+}

@@ -9,8 +9,9 @@
 Give engineers an MCP server that drives Delphix's internal `dc` tool on three
 VMs — `dlpxdc.co` (AWS), `dcol1.delphix.com`, `dcol2.delphix.com` — so they can
 provision, list, and manage infrastructure namespaces from Claude Code instead
-of SSHing in by hand. The server is the first component of a larger
-`dlpx-plugin` Claude Code plugin that will also hold skills.
+of SSHing in by hand. The server ships as `dlpx-dc-mcp`, the first plugin in
+the `dlpx-dev-tools` Claude Code marketplace; future Delphix plugins (skills,
+additional MCP servers) will land as sibling plugins in the same marketplace.
 
 ## Scope
 
@@ -33,37 +34,48 @@ Out of scope:
 
 ## Architecture
 
-### Plugin layout
+### Marketplace and plugin layout
 
 ```
-dlpx-plugin/
+dlpx-plugin/                               # repo root = marketplace root
 ├── .claude-plugin/
-│   └── plugin.json            # registers the MCP server
-├── mcp-servers/
-│   └── dlpx-dc/
-│       ├── package.json
-│       ├── tsconfig.json
-│       ├── src/
-│       │   ├── index.ts            # MCP server entrypoint (stdio)
-│       │   ├── config.ts           # env-var loading + defaults
-│       │   ├── targets.ts          # VM registry + per-target flags
-│       │   ├── session/
-│       │   │   ├── manager.ts      # per-VM session map + mutex
-│       │   │   └── ssh-session.ts  # single SSH connection + exec wrapper
-│       │   ├── auth/
-│       │   │   ├── credentials.ts  # env-var → prompt fallback
-│       │   │   └── dc-login.ts     # AWS login flow + expiry detection
-│       │   └── tools/
-│       │       ├── clone-latest.ts
-│       │       ├── list.ts
-│       │       ├── expire.ts
-│       │       ├── set-unregisters.ts
-│       │       ├── unarchive.ts
-│       │       ├── help.ts
-│       │       └── run.ts          # generic passthrough
-│       └── tests/
-└── skills/                     # future skills
+│   └── marketplace.json                   # marketplace catalog
+├── plugins/
+│   └── dlpx-dc-mcp/                       # the MCP-carrying plugin
+│       ├── .claude-plugin/
+│       │   └── plugin.json                # registers the MCP server
+│       ├── scripts/
+│       │   └── build-mcp.sh               # npm install + build
+│       └── mcp-servers/
+│           └── dlpx-dc/
+│               ├── package.json
+│               ├── tsconfig.json
+│               ├── src/
+│               │   ├── index.ts            # MCP server entrypoint (stdio)
+│               │   ├── config.ts           # env-var loading + defaults
+│               │   ├── targets.ts          # VM registry + per-target flags
+│               │   ├── session/
+│               │   │   ├── manager.ts      # per-VM session map + mutex
+│               │   │   └── ssh-session.ts  # single SSH connection + exec wrapper
+│               │   ├── auth/
+│               │   │   ├── credentials.ts  # env-var → prompt fallback
+│               │   │   └── dc-login.ts     # AWS login flow + expiry detection
+│               │   └── tools/
+│               │       ├── clone-latest.ts
+│               │       ├── list.ts
+│               │       ├── expire.ts
+│               │       ├── set-unregisters.ts
+│               │       ├── unarchive.ts
+│               │       ├── help.ts
+│               │       └── run.ts          # generic passthrough
+│               └── tests/
+└── docs/                                   # design + planning docs
 ```
+
+The plugin name (`dlpx-dc-mcp`) is what users install; the MCP server instance
+name (`dlpx-dc`, the key under `mcpServers` in `plugin.json`) is the functional
+identifier Claude Code exposes at runtime, matching the `mcp-servers/dlpx-dc/`
+source directory.
 
 ### Runtime
 
@@ -216,12 +228,37 @@ that file is the supported way to add/remove targets.
 
 ## Packaging & distribution
 
-The plugin is installable from a git URL. `plugin.json` registers the MCP
-under `mcpServers`:
+The repo is a Claude Code **marketplace** (`dlpx-dev-tools`) that currently
+ships one plugin, `dlpx-dc-mcp`. Users install it with:
+
+```
+/plugin marketplace add <git-url-or-local-path>
+/plugin install dlpx-dc-mcp@dlpx-dev-tools
+```
+
+`.claude-plugin/marketplace.json` at the repo root catalogs the plugin via a
+relative path:
 
 ```json
 {
-  "name": "dlpx-plugin",
+  "name": "dlpx-dev-tools",
+  "owner": { "name": "Delphix" },
+  "plugins": [
+    {
+      "name": "dlpx-dc-mcp",
+      "source": "./plugins/dlpx-dc-mcp",
+      "description": "MCP server that drives the Delphix `dc` CLI over SSH"
+    }
+  ]
+}
+```
+
+`plugins/dlpx-dc-mcp/.claude-plugin/plugin.json` registers the MCP under
+`mcpServers`:
+
+```json
+{
+  "name": "dlpx-dc-mcp",
   "mcpServers": {
     "dlpx-dc": {
       "command": "node",
@@ -231,9 +268,9 @@ under `mcpServers`:
 }
 ```
 
-`mcp-servers/dlpx-dc` is a standalone Node package with its own
-`package.json`. `npm install && npm run build` inside it produces
-`dist/index.js`. A top-level install step runs that build on plugin install so
+`plugins/dlpx-dc-mcp/mcp-servers/dlpx-dc` is a standalone Node package with its
+own `package.json`. `npm install && npm run build` inside it produces
+`dist/index.js`. `plugins/dlpx-dc-mcp/scripts/build-mcp.sh` wraps that so
 engineers don't have to know about the build step.
 
 ## Open items resolved at implementation time

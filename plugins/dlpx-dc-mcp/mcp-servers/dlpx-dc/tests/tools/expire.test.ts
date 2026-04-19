@@ -25,6 +25,32 @@ describe("dlpx_expire tool", () => {
     expect(stub.run).toHaveBeenCalledWith(["dc", "expire", "7", "a", "b"]);
   });
 
+  it("appends --ignore-missing when requested, before days/vms", async () => {
+    const { stub, manager, creds } = ctx();
+    const tool = createExpireTool({ manager, creds });
+    await tool.handler({
+      target: "dcol1",
+      days: 3,
+      vm_names: ["a"],
+      ignore_missing: true,
+    });
+    expect(stub.run).toHaveBeenCalledWith([
+      "dc", "expire", "--ignore-missing", "3", "a",
+    ]);
+  });
+
+  it("omits --ignore-missing when false or absent", async () => {
+    const { stub, manager, creds } = ctx();
+    const tool = createExpireTool({ manager, creds });
+    await tool.handler({
+      target: "dcol1",
+      days: 3,
+      vm_names: ["a"],
+      ignore_missing: false,
+    });
+    expect(stub.run).toHaveBeenCalledWith(["dc", "expire", "3", "a"]);
+  });
+
   it("rejects non-positive days and empty vm list", async () => {
     const { manager, creds } = ctx();
     const tool = createExpireTool({ manager, creds });

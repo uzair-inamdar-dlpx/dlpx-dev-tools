@@ -14,6 +14,7 @@ import { createCloneLatestTool } from "./tools/clone-latest.js";
 import { createExpireTool } from "./tools/expire.js";
 import { createSetUnregistersTool } from "./tools/set-unregisters.js";
 import { createUnarchiveTool } from "./tools/unarchive.js";
+import { createGroupsTool } from "./tools/groups.js";
 import { createHelpTool } from "./tools/help.js";
 import type { ToolDef } from "./tools/types.js";
 
@@ -110,6 +111,7 @@ async function main(): Promise<void> {
     createExpireTool(toolCtx),
     createSetUnregistersTool(toolCtx),
     createUnarchiveTool(toolCtx),
+    createGroupsTool(toolCtx),
     createHelpTool(toolCtx),
   ];
 

@@ -27,6 +27,20 @@ describe("dlpx_set_unregisters tool", () => {
     ]);
   });
 
+  it("appends --ignore-missing when requested", async () => {
+    const { stub, manager, creds } = ctx();
+    const tool = createSetUnregistersTool({ manager, creds });
+    await tool.handler({
+      target: "dcol2",
+      days: 2,
+      vm_names: ["a", "b"],
+      ignore_missing: true,
+    });
+    expect(stub.run).toHaveBeenCalledWith([
+      "dc", "set-unregisters", "--ignore-missing", "2", "a", "b",
+    ]);
+  });
+
   it("rejects dlpxdc target", async () => {
     const { manager, creds } = ctx();
     const tool = createSetUnregistersTool({ manager, creds });
