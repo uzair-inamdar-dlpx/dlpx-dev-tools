@@ -15,7 +15,7 @@ and exposes four plugins:
 | Plugin | Source | Purpose |
 | --- | --- | --- |
 | [`dlpx`](./plugins/dlpx) | local | Delphix dev-workflow skills: `issue-commit`, `publish-review`, `triage-bug` |
-| [`dlpx-dc-mcp`](./plugins/dlpx-dc-mcp) | local | MCP server that drives the Delphix `dc` CLI over SSH on `dlpxdc.co`, `dcol1.delphix.com`, `dcol2.delphix.com` |
+| [`dlpx-dc`](./plugins/dlpx-dc) | local | MCP server that drives the Delphix `dc` CLI over SSH on `dlpxdc.co`, `dcol1.delphix.com`, `dcol2.delphix.com` |
 | `atlassian` | [atlassian/atlassian-mcp-server](https://github.com/atlassian/atlassian-mcp-server) | Jira + Confluence MCP (required by the `dlpx` skills) |
 | `superpowers` | [obra/superpowers](https://github.com/obra/superpowers) | Brainstorming, TDD, debugging, and skill-authoring skills |
 
@@ -25,7 +25,7 @@ and exposes four plugins:
 
 - A Delphix LDAP account.
 - SSH access to `dlpxdc.co`, `dcol1.delphix.com`, and/or `dcol2.delphix.com` (VPN if your network requires it).
-- An SSH key loaded in `ssh-agent` or configured for those hosts in `~/.ssh/config` — `dlpx-dc-mcp` does not use password SSH.
+- An SSH key loaded in `ssh-agent` or configured for those hosts in `~/.ssh/config` — `dlpx-dc` does not use password SSH.
 - Node.js 20+ is **only** needed if you want to rebuild the MCP server from source; the repo ships a prebuilt `dist/`, so the default install has no Node requirement.
 
 ### Add the marketplace and install plugins
@@ -33,7 +33,7 @@ and exposes four plugins:
 ```
 /plugin marketplace add uzair-inamdar-dlpx/dlpx-dev-tools
 /plugin install dlpx
-/plugin install dlpx-dc-mcp
+/plugin install dlpx-dc
 /plugin install atlassian        # required by the dlpx skills
 /plugin install superpowers      # optional
 ```
@@ -51,7 +51,7 @@ Three skills, each triggered by natural-language requests in chat:
 - **`publish-review`** — publish the current branch as a PR using the Delphix `git review` wrapper, with the PR description auto-composed to match the Delphix template (Problem/Solution for bugs, Feature/Implementation details otherwise).
 - **`triage-bug`** — investigate a Jira bug and produce a structured triage report. Investigation only; no code changes, branches, or commits.
 
-### `dlpx-dc-mcp` — `dc` CLI over SSH
+### `dlpx-dc` — `dc` CLI over SSH
 
 A TypeScript MCP server (stdio transport) that wraps the Delphix `dc` CLI. It keeps one SSH session
 pooled per target host, serializes commands through a mutex, and handles LDAP + OTP login via MCP
@@ -93,13 +93,13 @@ The `target` parameter on every tool selects the host: `dlpxdc` (`dlpxdc.co`), `
 The repo checks in a prebuilt `dist/`, so you only need to build if you're modifying the server.
 
 ```
-./plugins/dlpx-dc-mcp/scripts/build-mcp.sh
+./plugins/dlpx-dc/scripts/build-mcp.sh
 ```
 
 Or manually:
 
 ```
-cd plugins/dlpx-dc-mcp/mcp-servers/dlpx-dc
+cd plugins/dlpx-dc/mcp-servers/dlpx-dc
 npm install
 npm run build
 npm test          # vitest
@@ -114,9 +114,8 @@ plugins/
   dlpx/                           # skills plugin
     .claude-plugin/plugin.json
     skills/{issue-commit,publish-review,triage-bug}/SKILL.md
-  dlpx-dc-mcp/                    # MCP server plugin
+  dlpx-dc/                        # MCP server plugin
     .claude-plugin/plugin.json
     mcp-servers/dlpx-dc/          # TypeScript MCP server source
     scripts/build-mcp.sh
-docs/                             # plans, design notes
 ```

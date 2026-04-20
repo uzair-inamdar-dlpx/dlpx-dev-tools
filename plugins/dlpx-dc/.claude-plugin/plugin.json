@@ -1,5 +1,5 @@
 {
-  "name": "dlpx-dc-mcp",
+  "name": "dlpx-dc",
   "version": "0.1.0",
   "description": "MCP server that drives the Delphix `dc` CLI over SSH on dlpxdc.co, dcol1.delphix.com, and dcol2.delphix.com",
   "author": {

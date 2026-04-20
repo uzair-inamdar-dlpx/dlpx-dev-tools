@@ -1,11 +1,11 @@
 {
-  "name": "dlpx-dc-mcp",
+  "name": "dlpx-dc",
   "version": "0.1.0",
   "description": "MCP server for Delphix dc CLI over SSH",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "dlpx-dc-mcp": "dist/index.js"
+    "dlpx-dc": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
