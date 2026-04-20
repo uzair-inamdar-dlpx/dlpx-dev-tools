@@ -8,6 +8,11 @@
   },
   "plugins": [
     {
+      "name": "dlpx",
+      "source": "./plugins/dlpx",
+      "description": "Delphix dev-workflow skills (issue-commit, etc.)"
+    },
+    {
       "name": "dlpx-dc-mcp",
       "source": "./plugins/dlpx-dc-mcp",
       "description": "MCP server that drives the Delphix `dc` CLI over SSH on dlpxdc.co, dcol1.delphix.com, and dcol2.delphix.com"

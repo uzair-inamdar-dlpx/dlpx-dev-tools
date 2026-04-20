@@ -1,0 +1,8 @@
+{
+  "name": "dlpx",
+  "version": "0.1.0",
+  "description": "Delphix dev-workflow skills (issue-commit, and publish-review in a follow-up).",
+  "author": {
+    "name": "Delphix"
+  }
+}
