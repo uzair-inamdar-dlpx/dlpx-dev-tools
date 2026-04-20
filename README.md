@@ -69,6 +69,7 @@ elicitation.
 | `dlpx_help` | all | `dc` help passthrough |
 | `dlpx_set_unregisters` | `dcol1`, `dcol2` | extend un-register window |
 | `dlpx_unarchive` | `dlpxdc` | unarchive from AWS |
+| `dlpx_register` | `dcol1`, `dcol2` | register a VM to an ESX host and power it on |
 
 The `target` parameter on every tool selects the host: `dlpxdc` (`dlpxdc.co`), `dcol1`
 (`dcol1.delphix.com`), or `dcol2` (`dcol2.delphix.com`).

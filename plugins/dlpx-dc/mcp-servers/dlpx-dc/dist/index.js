@@ -12,6 +12,7 @@ import { createCloneLatestTool } from "./tools/clone-latest.js";
 import { createExpireTool } from "./tools/expire.js";
 import { createSetUnregistersTool } from "./tools/set-unregisters.js";
 import { createUnarchiveTool } from "./tools/unarchive.js";
+import { createRegisterTool } from "./tools/register.js";
 import { createGroupsTool } from "./tools/groups.js";
 import { createHelpTool } from "./tools/help.js";
 async function main() {
@@ -99,6 +100,7 @@ async function main() {
         createExpireTool(toolCtx),
         createSetUnregistersTool(toolCtx),
         createUnarchiveTool(toolCtx),
+        createRegisterTool(toolCtx),
         createGroupsTool(toolCtx),
         createHelpTool(toolCtx),
     ];
