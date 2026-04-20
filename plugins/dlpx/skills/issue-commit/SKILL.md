@@ -83,9 +83,6 @@ Determine the commit message format using the following decision tree. "Matches 
 3. **Commits ahead of remote, but no commit message contains any of the provided issue IDs** — the issue IDs don't match any existing work on this branch.
    Stop and ask the user what they want to do. Do not assume.
 
-### Step 5: Next step — publishing
+### Step 5: Publish for review
 
-The commit is done. This skill does not push or open a PR on its own. To get the branch into review:
-
-- Run `git push -u origin <branch-name>` manually, then open a PR via `gh pr create` (or the GitHub web UI).
-- Or wait for the forthcoming `dlpx:publish-review` skill, which will automate this handoff.
+Ask the user if they'd like to publish the PR for review using the `dlpx:publish-review` skill. If yes, hand off to it — `publish-review` takes it from here (rebase-sync, PR description, `git review`). If no, stop cleanly; the commit is complete either way.
