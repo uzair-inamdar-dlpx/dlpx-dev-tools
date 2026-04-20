@@ -26,16 +26,33 @@ and exposes four plugins:
 - A Delphix LDAP account.
 - SSH access to `dlpxdc.co`, `dcol1.delphix.com`, and/or `dcol2.delphix.com` (VPN if your network requires it).
 - An SSH key loaded in `ssh-agent` or configured for those hosts in `~/.ssh/config` — `dlpx-dc` does not use password SSH.
-- Node.js 20+ is **only** needed if you want to rebuild the MCP server from source; the repo ships a prebuilt `dist/`, so the default install has no Node requirement.
+- Node.js 20+ — required to build the `dlpx-dc` MCP server.
 
-### Add the marketplace and install plugins
+### Clone and build
+
+The `dlpx-dc` MCP server ships as TypeScript source and is compiled locally;
+dependencies (`@modelcontextprotocol/sdk`, `ssh2`, `zod`) are installed into
+`node_modules/` next to the compiled output, so there's no prebuilt standalone
+artifact. Clone the repo and run the build script once:
 
 ```
-/plugin marketplace add uzair-inamdar-dlpx/dlpx-dev-tools
-/plugin install dlpx
-/plugin install dlpx-dc
-/plugin install atlassian        # required by the dlpx skills
-/plugin install superpowers      # optional
+git clone https://github.com/uzair-inamdar/dlpx-plugin.git
+cd dlpx-plugin
+./build.sh
+```
+
+Re-run `./build.sh` after pulling changes.
+
+### Register the marketplace and install plugins
+
+In Claude Code, add the marketplace from your local checkout, then install:
+
+```
+/plugin marketplace add /absolute/path/to/dlpx-plugin
+/plugin install dlpx@dlpx-dev-tools
+/plugin install dlpx-dc@dlpx-dev-tools
+/plugin install atlassian@dlpx-dev-tools     # required by the dlpx skills
+/plugin install superpowers@dlpx-dev-tools   # optional
 ```
 
 The `dlpx` skills hard-require an Atlassian MCP — either the marketplace `atlassian` plugin or the
@@ -91,13 +108,9 @@ The `target` parameter on every tool selects the host: `dlpxdc` (`dlpxdc.co`), `
 
 #### Building from source
 
-The repo checks in a prebuilt `dist/`, so you only need to build if you're modifying the server.
-
-```
-./plugins/dlpx-dc/scripts/build-mcp.sh
-```
-
-Or manually:
+`./build.sh` at the repo root runs `npm install && npm run build` for the
+server and is the only step required for normal installs. When hacking on the
+server you can work in the package directly:
 
 ```
 cd plugins/dlpx-dc/mcp-servers/dlpx-dc
@@ -111,6 +124,7 @@ npm run smoke     # manual end-to-end smoke test against a real host
 
 ```
 .claude-plugin/marketplace.json   # marketplace manifest
+build.sh                          # one-shot: installs deps + compiles MCP server
 plugins/
   dlpx/                           # skills plugin
     .claude-plugin/plugin.json
@@ -118,5 +132,4 @@ plugins/
   dlpx-dc/                        # MCP server plugin
     .claude-plugin/plugin.json
     mcp-servers/dlpx-dc/          # TypeScript MCP server source
-    scripts/build-mcp.sh
 ```
