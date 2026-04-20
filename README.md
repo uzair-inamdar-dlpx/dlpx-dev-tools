@@ -21,7 +21,14 @@ and exposes four plugins:
 
 ## Installing
 
-Add the marketplace to Claude Code, then install the plugins you want:
+### Prerequisites
+
+- A Delphix LDAP account.
+- SSH access to `dlpxdc.co`, `dcol1.delphix.com`, and/or `dcol2.delphix.com` (VPN if your network requires it).
+- An SSH key loaded in `ssh-agent` or configured for those hosts in `~/.ssh/config` — `dlpx-dc-mcp` does not use password SSH.
+- Node.js 20+ is **only** needed if you want to rebuild the MCP server from source; the repo ships a prebuilt `dist/`, so the default install has no Node requirement.
+
+### Add the marketplace and install plugins
 
 ```
 /plugin marketplace add uzair-inamdar-dlpx/dlpx-dev-tools
@@ -46,12 +53,44 @@ Three skills, each triggered by natural-language requests in chat:
 
 ### `dlpx-dc-mcp` — `dc` CLI over SSH
 
-An MCP server (Node 20+, TypeScript, stdio transport) that exposes the Delphix `dc` CLI as tools:
-`dlpx_run`, `dlpx_list`, `dlpx_clone_latest`, `dlpx_expire`, `dlpx_set_unregisters`,
-`dlpx_unarchive`, `dlpx_groups`, `dlpx_help`. Handles LDAP + OTP login via MCP elicitation and keeps
-an SSH session pooled per target host.
+A TypeScript MCP server (stdio transport) that wraps the Delphix `dc` CLI. It keeps one SSH session
+pooled per target host, serializes commands through a mutex, and handles LDAP + OTP login via MCP
+elicitation.
 
-Build before first use (the plugin manifest points at `dist/index.js`):
+#### Tools
+
+| Tool | Targets | Notes |
+| --- | --- | --- |
+| `dlpx_run` | all | arbitrary `dc` subcommand |
+| `dlpx_list` | all | list VMs, with filtering/sorting |
+| `dlpx_clone_latest` | all | clone from a group's latest snapshot |
+| `dlpx_expire` | all | set VM expiration days |
+| `dlpx_groups` | all | manage VM groups |
+| `dlpx_help` | all | `dc` help passthrough |
+| `dlpx_set_unregisters` | `dcol1`, `dcol2` | extend un-register window |
+| `dlpx_unarchive` | `dlpxdc` | unarchive from AWS |
+
+The `target` parameter on every tool selects the host: `dlpxdc` (`dlpxdc.co`), `dcol1`
+(`dcol1.delphix.com`), or `dcol2` (`dcol2.delphix.com`).
+
+#### Authentication
+
+- **SSH**: key-based only. Make sure the key you use for these hosts is loaded in `ssh-agent` or
+  configured in `~/.ssh/config` — there is no password-SSH fallback.
+- **LDAP username**: defaults to `$USER`. Override with `DLPX_LDAP_USER` if your LDAP login differs
+  from your local username.
+- **LDAP password**: on the first tool call that needs it, the server prompts you via MCP
+  elicitation (Claude Code pops up a password input). It caches the password in memory for the
+  server process's lifetime, so you'll only type it once per session. To skip the prompt entirely,
+  pre-seed `DLPX_LDAP_PASSWORD` in the plugin's environment.
+- **OTP**: prompted freshly every time `dc login` runs — never cached. Only `dlpxdc.co` requires
+  `dc login` (triggered on auth failure and retried once); `dcol1` and `dcol2` commands skip it.
+- **Timeouts / keepalive**: `DLPX_COMMAND_TIMEOUT_SEC` (default `1800`) — raise for long clones.
+  `DLPX_SSH_KEEPALIVE_SEC` (default `30`).
+
+#### Building from source
+
+The repo checks in a prebuilt `dist/`, so you only need to build if you're modifying the server.
 
 ```
 ./plugins/dlpx-dc-mcp/scripts/build-mcp.sh
