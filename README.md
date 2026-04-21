@@ -25,7 +25,7 @@ and exposes four plugins:
 
 - A Delphix LDAP account.
 - SSH access to `dlpxdc.co`, `dcol1.delphix.com`, and/or `dcol2.delphix.com` (VPN if your network requires it).
-- An SSH key loaded in `ssh-agent` for those hosts is recommended — `dlpx-dc` will use it silently. Without an agent, it falls back to asking for your LDAP password.
+- An SSH key loaded in `ssh-agent` for those hosts is recommended — `dlpx-dc` will use it silently. Without an agent, it falls back to asking for your LDAP password. See [SSH_SETUP.md](./SSH_SETUP.md) for step-by-step instructions.
 - Node.js 20+ at runtime. Claude Code invokes the bundled server directly.
 
 ### Clone
