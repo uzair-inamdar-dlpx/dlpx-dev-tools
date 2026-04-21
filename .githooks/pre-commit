@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Rebuild the dlpx-dc MCP bundle when staged changes touch its source.
+# Auto-stages the rebuilt dist so the commit stays self-consistent.
+set -euo pipefail
+
+SERVER_SRC_PREFIX="plugins/dlpx-dc/mcp-servers/dlpx-dc/src/"
+SERVER_DIR="plugins/dlpx-dc/mcp-servers/dlpx-dc"
+
+staged="$(git diff --cached --name-only --diff-filter=ACMR)"
+
+if ! printf '%s\n' "$staged" | grep -q "^${SERVER_SRC_PREFIX}"; then
+  exit 0
+fi
+
+echo "pre-commit: src/ changed in ${SERVER_DIR}; rebuilding bundle…" >&2
+
+(
+  cd "${SERVER_DIR}"
+  npm run --silent build
+)
+
+git add "${SERVER_DIR}/dist/index.js" "${SERVER_DIR}/dist/index.js.map"
+
+echo "pre-commit: bundle rebuilt and staged." >&2
