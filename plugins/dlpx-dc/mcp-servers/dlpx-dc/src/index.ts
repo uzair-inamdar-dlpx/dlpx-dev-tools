@@ -17,7 +17,9 @@ import { createUnarchiveTool } from "./tools/unarchive.js";
 import { createRegisterTool } from "./tools/register.js";
 import { createGroupsTool } from "./tools/groups.js";
 import { createHelpTool } from "./tools/help.js";
+import { createSetAuthTool } from "./tools/set-auth.js";
 import type { ToolDef } from "./tools/types.js";
+import type { AuthMode } from "./config.js";
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -73,18 +75,24 @@ async function main(): Promise<void> {
     elicitor,
   );
 
-  // Password is resolved the first time a session needs it (via creds), so we
-  // wrap SshSession behind a lazy adapter. This lets SessionManager's factory
-  // stay synchronous while the actual SSH connect is async.
+  // Mutable at runtime via dlpx_set_auth. Seeded from DLPX_SSH_AUTH.
+  let currentMode: AuthMode = config.authMode;
+  const agentSocket = process.env.SSH_AUTH_SOCK;
+
+  // SshSession resolves auth lazily: agent first (if SSH_AUTH_SOCK is set and
+  // mode permits), password (via `creds`) only if needed. Keeping the wrapper
+  // lets SessionManager's factory stay synchronous.
   class LazySshExec implements SshExec {
     private session?: SshSession;
     constructor(private readonly host: string) {}
-    private async ensure(): Promise<SshSession> {
+    private ensure(): SshSession {
       if (!this.session) {
         this.session = new SshSession({
           host: this.host,
           username: config.ldapUser,
-          password: await creds.getPassword(),
+          agentSocket,
+          password: () => creds.getPassword(),
+          getMode: () => currentMode,
           keepaliveIntervalSec: config.sshKeepaliveSec,
           commandTimeoutSec: config.commandTimeoutSec,
         });
@@ -92,7 +100,7 @@ async function main(): Promise<void> {
       return this.session;
     }
     async run(argv: string[]): Promise<ExecResult> {
-      return (await this.ensure()).run(argv);
+      return this.ensure().run(argv);
     }
     async close(): Promise<void> {
       if (this.session) await this.session.close();
@@ -115,6 +123,12 @@ async function main(): Promise<void> {
     createRegisterTool(toolCtx),
     createGroupsTool(toolCtx),
     createHelpTool(toolCtx),
+    createSetAuthTool({
+      manager,
+      getMode: () => currentMode,
+      setMode: (m) => { currentMode = m; },
+      agentSocketPresent: Boolean(agentSocket),
+    }),
   ];
 
   for (const tool of tools) {

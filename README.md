@@ -25,7 +25,7 @@ and exposes four plugins:
 
 - A Delphix LDAP account.
 - SSH access to `dlpxdc.co`, `dcol1.delphix.com`, and/or `dcol2.delphix.com` (VPN if your network requires it).
-- An SSH key loaded in `ssh-agent` or configured for those hosts in `~/.ssh/config` — `dlpx-dc` does not use password SSH.
+- An SSH key loaded in `ssh-agent` for those hosts is recommended — `dlpx-dc` will use it silently. Without an agent, it falls back to asking for your LDAP password.
 - Node.js 20+ — required to build the `dlpx-dc` MCP server.
 
 ### Clone and build
@@ -87,20 +87,31 @@ elicitation.
 | `dlpx_set_unregisters` | `dcol1`, `dcol2` | extend un-register window |
 | `dlpx_unarchive` | `dlpxdc` | unarchive from AWS |
 | `dlpx_register` | `dcol1`, `dcol2` | register a VM to an ESX host and power it on |
+| `dlpx_set_auth` | — | change the SSH auth mode (`auto`/`agent`/`password`) at runtime; resets live sessions |
 
 The `target` parameter on every tool selects the host: `dlpxdc` (`dlpxdc.co`), `dcol1`
 (`dcol1.delphix.com`), or `dcol2` (`dcol2.delphix.com`).
 
 #### Authentication
 
-- **SSH**: key-based only. Make sure the key you use for these hosts is loaded in `ssh-agent` or
-  configured in `~/.ssh/config` — there is no password-SSH fallback.
+- **SSH**: agent-first by default. If `SSH_AUTH_SOCK` points at an agent with a key authorized on
+  the target host, `dlpx-dc` uses publickey auth via the agent. If that's unavailable or the server
+  rejects the agent's keys, it falls back to LDAP password auth (see below). Your key material
+  never leaves the agent.
+- **`DLPX_SSH_AUTH`**: pins the SSH auth mode at plugin launch. Values:
+  - `auto` (default) — agent first, LDAP password fallback.
+  - `agent` — agent only. Fails fast if the agent can't auth (no password prompt). Useful when you
+    want to catch a misconfigured agent early instead of sliding into a surprise password prompt.
+  - `password` — LDAP password only; skip the agent entirely. Useful when debugging or when your
+    agent is offering the wrong key.
+  The mode is also mutable at runtime via the `dlpx_set_auth` tool (calling it closes live SSH
+  sessions so the next command reconnects with the new mode). Restart reverts to `DLPX_SSH_AUTH`.
 - **LDAP username**: defaults to `$USER`. Override with `DLPX_LDAP_USER` if your LDAP login differs
   from your local username.
-- **LDAP password**: on the first tool call that needs it, the server prompts you via MCP
-  elicitation (Claude Code pops up a password input). It caches the password in memory for the
-  server process's lifetime, so you'll only type it once per session. To skip the prompt entirely,
-  pre-seed `DLPX_LDAP_PASSWORD` in the plugin's environment.
+- **LDAP password**: needed for `dc login` on `dlpxdc.co`, and also used for SSH in `auto` or
+  `password` mode. The server prompts via MCP elicitation (Claude Code pops up a password input)
+  the first time it's needed, and caches it in memory for the server process's lifetime. Pre-seed
+  `DLPX_LDAP_PASSWORD` in the plugin's environment to skip the prompt.
 - **OTP**: prompted freshly every time `dc login` runs — never cached. Only `dlpxdc.co` requires
   `dc login` (triggered on auth failure and retried once); `dcol1` and `dcol2` commands skip it.
 - **Timeouts / keepalive**: `DLPX_COMMAND_TIMEOUT_SEC` (default `1800`) — raise for long clones.

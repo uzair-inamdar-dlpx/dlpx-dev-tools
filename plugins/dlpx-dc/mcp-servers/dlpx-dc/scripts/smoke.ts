@@ -30,7 +30,8 @@ async function main() {
           session = new SshSession({
             host: t.host,
             username: cfg.ldapUser,
-            password: await creds.getPassword(),
+            agentSocket: process.env.SSH_AUTH_SOCK,
+            password: () => creds.getPassword(),
             keepaliveIntervalSec: cfg.sshKeepaliveSec,
             commandTimeoutSec: cfg.commandTimeoutSec,
           });
