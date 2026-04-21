@@ -26,22 +26,17 @@ and exposes four plugins:
 - A Delphix LDAP account.
 - SSH access to `dlpxdc.co`, `dcol1.delphix.com`, and/or `dcol2.delphix.com` (VPN if your network requires it).
 - An SSH key loaded in `ssh-agent` for those hosts is recommended — `dlpx-dc` will use it silently. Without an agent, it falls back to asking for your LDAP password.
-- Node.js 20+ — required to build the `dlpx-dc` MCP server.
+- Node.js 20+ at runtime. Claude Code invokes the bundled server directly.
 
-### Clone and build
-
-The `dlpx-dc` MCP server ships as TypeScript source and is compiled locally;
-dependencies (`@modelcontextprotocol/sdk`, `ssh2`, `zod`) are installed into
-`node_modules/` next to the compiled output, so there's no prebuilt standalone
-artifact. Clone the repo and run the build script once:
+### Clone
 
 ```
 git clone https://github.com/uzair-inamdar/dlpx-plugin.git
-cd dlpx-plugin
-./build.sh
 ```
 
-Re-run `./build.sh` after pulling changes.
+The `dlpx-dc` MCP server ships as a prebuilt, self-contained bundle at
+`plugins/dlpx-dc/mcp-servers/dlpx-dc/dist/index.js`. No build step is required
+to install the plugin.
 
 ### Register the marketplace and install plugins
 
@@ -117,25 +112,34 @@ The `target` parameter on every tool selects the host: `dlpxdc` (`dlpxdc.co`), `
 - **Timeouts / keepalive**: `DLPX_COMMAND_TIMEOUT_SEC` (default `1800`) — raise for long clones.
   `DLPX_SSH_KEEPALIVE_SEC` (default `30`).
 
-#### Building from source
+#### Hacking on the server
 
-`./build.sh` at the repo root runs `npm install && npm run build` for the
-server and is the only step required for normal installs. When hacking on the
-server you can work in the package directly:
+The bundled artifact at `dist/index.js` is committed. When editing server
+source, activate the pre-commit hook once per clone so the bundle stays in
+sync with `src/`:
+
+```
+git config core.hooksPath .githooks
+```
+
+Day-to-day:
 
 ```
 cd plugins/dlpx-dc/mcp-servers/dlpx-dc
 npm install
-npm run build
+npm run build     # esbuild bundle → dist/index.js
 npm test          # vitest
 npm run smoke     # manual end-to-end smoke test against a real host
 ```
+
+The pre-commit hook re-runs `npm run build` and auto-stages the rebuilt
+bundle whenever a commit touches `src/`.
 
 ## Repo layout
 
 ```
 .claude-plugin/marketplace.json   # marketplace manifest
-build.sh                          # one-shot: installs deps + compiles MCP server
+.githooks/pre-commit              # rebuilds dlpx-dc bundle when src changes
 plugins/
   dlpx/                           # skills plugin
     .claude-plugin/plugin.json
