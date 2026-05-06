@@ -22,7 +22,10 @@ export async function runOnTarget(opts: RunOnTargetOptions): Promise<string> {
     );
   }
   const target = getTarget(opts.target);
-  const run = (argv: string[]) => opts.manager.run(opts.target, argv);
+  const run: import("../auth/dc-login.js").RunFn = (argv, runOpts) =>
+    runOpts
+      ? opts.manager.run(opts.target, argv, runOpts)
+      : opts.manager.run(opts.target, argv);
   const result = target.requiresDcLogin
     ? await runWithDcLogin(run, opts.creds, opts.argv)
     : await run(opts.argv);

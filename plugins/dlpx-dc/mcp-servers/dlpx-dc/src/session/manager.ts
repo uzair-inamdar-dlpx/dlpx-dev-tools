@@ -1,6 +1,6 @@
 import { Mutex } from "../util/mutex.js";
 import type { TargetId } from "../targets.js";
-import type { ExecResult, SshExec } from "./exec.js";
+import type { ExecResult, RunOptions, SshExec } from "./exec.js";
 
 export type SessionFactory = (id: TargetId) => SshExec;
 
@@ -14,9 +14,15 @@ export class SessionManager {
 
   constructor(private readonly factory: SessionFactory) {}
 
-  async run(id: TargetId, argv: string[]): Promise<ExecResult> {
+  async run(
+    id: TargetId,
+    argv: string[],
+    opts?: RunOptions,
+  ): Promise<ExecResult> {
     const slot = this.slotFor(id);
-    return slot.mutex.run(() => slot.exec.run(argv));
+    return slot.mutex.run(() =>
+      opts ? slot.exec.run(argv, opts) : slot.exec.run(argv),
+    );
   }
 
   private slotFor(id: TargetId): Slot {
