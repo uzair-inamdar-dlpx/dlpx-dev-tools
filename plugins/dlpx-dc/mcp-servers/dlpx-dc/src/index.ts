@@ -7,7 +7,7 @@ import { SessionManager } from "./session/manager.js";
 import { SshSession } from "./session/ssh-session.js";
 import { CredentialStore } from "./auth/credentials.js";
 import type { Elicitor } from "./auth/elicit.js";
-import type { SshExec, ExecResult } from "./session/exec.js";
+import type { SshExec, ExecResult, RunOptions } from "./session/exec.js";
 import { createRunTool } from "./tools/run.js";
 import { createListTool } from "./tools/list.js";
 import { createCloneLatestTool } from "./tools/clone-latest.js";
@@ -99,8 +99,9 @@ async function main(): Promise<void> {
       }
       return this.session;
     }
-    async run(argv: string[]): Promise<ExecResult> {
-      return this.ensure().run(argv);
+    async run(argv: string[], opts?: RunOptions): Promise<ExecResult> {
+      const session = this.ensure();
+      return opts ? session.run(argv, opts) : session.run(argv);
     }
     async close(): Promise<void> {
       if (this.session) await this.session.close();

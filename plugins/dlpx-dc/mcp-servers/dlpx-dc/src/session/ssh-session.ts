@@ -7,7 +7,7 @@ import {
 } from "ssh2";
 import type { AuthMode } from "../config.js";
 import { shellQuote } from "../util/shell-quote.js";
-import type { ExecResult, SshExec } from "./exec.js";
+import type { ExecResult, RunOptions, SshExec } from "./exec.js";
 
 export interface SshSessionOptions {
   host: string;
@@ -107,31 +107,59 @@ export class SshSession implements SshExec {
     };
   }
 
-  async run(argv: string[]): Promise<ExecResult> {
+  async run(argv: string[], opts?: RunOptions): Promise<ExecResult> {
     const client = await this.connect();
     const command = shellQuote(argv);
+    const execOpts = opts?.pty ? { pty: true } : undefined;
+    const timeoutSec = opts?.timeoutSec ?? this.opts.commandTimeoutSec;
+    const pending = opts?.prompts ? [...opts.prompts] : [];
     return new Promise<ExecResult>((resolve, reject) => {
-      client.exec(command, (err, stream: ClientChannel) => {
+      const cb = (err: Error | undefined, stream: ClientChannel) => {
         if (err) return reject(err);
         let stdout = "";
         let stderr = "";
         let code = 0;
         const timer = setTimeout(() => {
           stream.close();
+          const transcript = (stdout || stderr).trim();
+          const detail = transcript
+            ? `\n--- captured output ---\n${transcript}`
+            : "";
           reject(
             new Error(
-              `command timed out after ${this.opts.commandTimeoutSec}s: ${command}`,
+              `command timed out after ${timeoutSec}s: ${command}${detail}`,
             ),
           );
-        }, this.opts.commandTimeoutSec * 1000);
+        }, timeoutSec * 1000);
         stream.on("close", (exit: number | null) => {
           clearTimeout(timer);
           resolve({ stdout, stderr, code: exit ?? code });
         });
-        stream.on("data", (d: Buffer) => { stdout += d.toString("utf8"); });
-        stream.stderr.on("data", (d: Buffer) => { stderr += d.toString("utf8"); });
+        const onChunk = (text: string) => {
+          stdout += text;
+          if (pending.length === 0) return;
+          // Match against the full rolling buffer so prompts split across
+          // chunks still fire. Each prompt fires at most once.
+          for (let i = 0; i < pending.length; i++) {
+            if (pending[i].match.test(stdout)) {
+              stream.write(`${pending[i].respond}\n`);
+              pending.splice(i, 1);
+              break;
+            }
+          }
+        };
+        stream.on("data", (d: Buffer) => onChunk(d.toString("utf8")));
+        stream.stderr.on("data", (d: Buffer) => {
+          stderr += d.toString("utf8");
+        });
         stream.on("exit", (exit: number) => { code = exit; });
-      });
+      };
+      // ssh2 overloads exec; @types/ssh2 is picky about the options form.
+      if (execOpts) {
+        client.exec(command, execOpts, cb);
+      } else {
+        client.exec(command, cb);
+      }
     });
   }
 

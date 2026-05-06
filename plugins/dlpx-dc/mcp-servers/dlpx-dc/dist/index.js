@@ -41214,9 +41214,11 @@ var SessionManager = class {
     this.factory = factory;
   }
   slots = /* @__PURE__ */ new Map();
-  async run(id, argv) {
+  async run(id, argv, opts) {
     const slot = this.slotFor(id);
-    return slot.mutex.run(() => slot.exec.run(argv));
+    return slot.mutex.run(
+      () => opts ? slot.exec.run(argv, opts) : slot.exec.run(argv)
+    );
   }
   slotFor(id) {
     let slot = this.slots.get(id);
@@ -41310,37 +41312,59 @@ var SshSession = class {
       stopAuth(next);
     };
   }
-  async run(argv) {
+  async run(argv, opts) {
     const client = await this.connect();
     const command = shellQuote(argv);
+    const execOpts = opts?.pty ? { pty: true } : void 0;
+    const timeoutSec = opts?.timeoutSec ?? this.opts.commandTimeoutSec;
+    const pending = opts?.prompts ? [...opts.prompts] : [];
     return new Promise((resolve, reject) => {
-      client.exec(command, (err, stream) => {
+      const cb = (err, stream) => {
         if (err) return reject(err);
         let stdout = "";
         let stderr = "";
         let code = 0;
         const timer = setTimeout(() => {
           stream.close();
+          const transcript = (stdout || stderr).trim();
+          const detail = transcript ? `
+--- captured output ---
+${transcript}` : "";
           reject(
             new Error(
-              `command timed out after ${this.opts.commandTimeoutSec}s: ${command}`
+              `command timed out after ${timeoutSec}s: ${command}${detail}`
             )
           );
-        }, this.opts.commandTimeoutSec * 1e3);
+        }, timeoutSec * 1e3);
         stream.on("close", (exit) => {
           clearTimeout(timer);
           resolve({ stdout, stderr, code: exit ?? code });
         });
-        stream.on("data", (d) => {
-          stdout += d.toString("utf8");
-        });
+        const onChunk = (text) => {
+          stdout += text;
+          if (pending.length === 0) return;
+          for (let i = 0; i < pending.length; i++) {
+            if (pending[i].match.test(stdout)) {
+              stream.write(`${pending[i].respond}
+`);
+              pending.splice(i, 1);
+              break;
+            }
+          }
+        };
+        stream.on("data", (d) => onChunk(d.toString("utf8")));
         stream.stderr.on("data", (d) => {
           stderr += d.toString("utf8");
         });
         stream.on("exit", (exit) => {
           code = exit;
         });
-      });
+      };
+      if (execOpts) {
+        client.exec(command, execOpts, cb);
+      } else {
+        client.exec(command, cb);
+      }
     });
   }
   async close() {
@@ -41378,7 +41402,9 @@ var LOGIN_REQUIRED_PATTERNS = [
   /authentication token expired/i,
   /not logged in/i,
   /login required/i,
-  /session expired/i
+  /session expired/i,
+  /user login expired/i,
+  /invalid credentials/i
 ];
 function isLoginRequiredError(r) {
   if (r.code === 0) return false;
@@ -41386,21 +41412,25 @@ function isLoginRequiredError(r) {
 ${r.stdout}`;
   return LOGIN_REQUIRED_PATTERNS.some((p) => p.test(haystack));
 }
+function oneLoginUsername(ldapUser) {
+  return ldapUser.includes("@") ? ldapUser : `${ldapUser}@delphix.com`;
+}
 async function runWithDcLogin(run, creds, argv) {
   const first = await run(argv);
   if (!isLoginRequiredError(first)) return first;
   const password = await creds.getPassword();
   const otp = await creds.getOtp();
-  const login = await run([
-    "dc",
-    "login",
-    "--user",
-    creds.user,
-    "--password",
-    password,
-    "--otp",
-    otp
-  ]);
+  const login = await run(
+    ["dc", "login", "--username", oneLoginUsername(creds.user)],
+    {
+      pty: true,
+      timeoutSec: 60,
+      prompts: [
+        { match: /OneLogin password.*:/i, respond: password },
+        { match: /OneLogin Protect Token:/i, respond: otp }
+      ]
+    }
+  );
   if (login.code !== 0) {
     throw new Error(
       `dc login failed (exit ${login.code}): ${login.stderr.trim() || login.stdout.trim()}`
@@ -41431,7 +41461,7 @@ async function runOnTarget(opts) {
     );
   }
   const target = getTarget(opts.target);
-  const run = (argv) => opts.manager.run(opts.target, argv);
+  const run = (argv, runOpts) => runOpts ? opts.manager.run(opts.target, argv, runOpts) : opts.manager.run(opts.target, argv);
   const result = target.requiresDcLogin ? await runWithDcLogin(run, opts.creds, opts.argv) : await run(opts.argv);
   return formatExecResult(result);
 }
@@ -41933,8 +41963,9 @@ async function main() {
       }
       return this.session;
     }
-    async run(argv) {
-      return this.ensure().run(argv);
+    async run(argv, opts) {
+      const session = this.ensure();
+      return opts ? session.run(argv, opts) : session.run(argv);
     }
     async close() {
       if (this.session) await this.session.close();
